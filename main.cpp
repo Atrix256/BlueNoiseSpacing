@@ -2,8 +2,8 @@
 #include <random>
 #include <direct.h>
 
-static const int c_numPoints = 256;
-static const int c_numTrials = 10;
+static const int c_numPoints = 128;
+static const int c_numTrials = 1000;
 
 static const float c_goldenRatioConjugate = 0.61803398875f;
 
@@ -31,7 +31,7 @@ std::vector<float> MBC1D(std::mt19937& rng, int numPoints)
             float candidate = dist(rng);
 
             for (int comparisonIndex = 0; comparisonIndex < pointIndex; ++comparisonIndex)
-                score = std::min(score, DistanceTorroidal(candidate, ret[pointIndex]));
+                score = std::min(score, DistanceTorroidal(candidate, ret[comparisonIndex]));
 
             if (score > bestScore)
             {
@@ -60,7 +60,7 @@ void WriteResults(const std::vector<float>& results, const char* label, int tria
     FILE* file = nullptr;
     fopen_s(&file, fileName, "wt");
 
-    fprintf(file, "\"%s\"\n", label);
+    //fprintf(file, "\"%s\"\n", label);
 
     for (float f : resultsSorted)
         fprintf(file, "\"%f\"\n", f);
@@ -79,11 +79,12 @@ int main(int argc, char** argv)
     {
         printf("\rtrial: %i/%i", trial+1, c_numTrials);
 
-        std::vector<float> bn = MBC1D(rng, c_numPoints);
+        std::vector<float> blue = MBC1D(rng, c_numPoints);
         
-        std::vector<float> uniform(c_numPoints);
+        std::vector<float> regular(c_numPoints);
+        float offset = dist(rng);
         for (int i = 0; i < c_numPoints; ++i)
-            uniform[i] = (float(i) + 0.5f) / float(c_numPoints);
+            regular[i] = Fract(offset + (float(i) + 0.5f) / float(c_numPoints));
 
         std::vector<float> stratified(c_numPoints);
         for (int i = 0; i < c_numPoints; ++i)
@@ -93,26 +94,26 @@ int main(int argc, char** argv)
         for (int i = 0; i < c_numPoints; ++i)
             white[i] = dist(rng);
 
-        std::vector<float> gr(c_numPoints);
-        gr[0] = dist(rng);
+        std::vector<float> goldenRatio(c_numPoints);
+        goldenRatio[0] = dist(rng);
         for (int i = 1; i < c_numPoints; ++i)
-            gr[i] = Fract(gr[i - 1] + c_goldenRatioConjugate);
+            goldenRatio[i] = Fract(goldenRatio[i - 1] + c_goldenRatioConjugate);
 
-        std::vector<float> av(c_numPoints);
+        std::vector<float> antithetic(c_numPoints);
         for (int i = 0; i < c_numPoints; ++i)
         {
             if (i % 2 == 0)
-                av[i] = dist(rng);
+                antithetic[i] = dist(rng);
             else
-                av[i] = 1.0f - av[i - 1];
+                antithetic[i] = 1.0f - antithetic[i - 1];
         }
 
-        WriteResults(bn, "bn", trial);
-        WriteResults(uniform, "uniform", trial);
+        WriteResults(blue, "blue", trial);
+        WriteResults(regular, "regular", trial);
         WriteResults(stratified, "stratified", trial);
         WriteResults(white, "white", trial);
-        WriteResults(gr, "gr", trial);
-        WriteResults(av, "av", trial);
+        WriteResults(goldenRatio, "goldenratio", trial);
+        WriteResults(antithetic, "antithetic", trial);
     }
     printf("\n\n");
 }
