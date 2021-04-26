@@ -50,6 +50,7 @@ for fileGroup in fileGroups:
 
     image1d_dfts = []
     diff_dfts = []
+    diff_histograms = []
     
     for fileName in glob.glob("out/" + fileGroup + "_*.csv"):
         df = pd.read_csv(fileName)
@@ -109,6 +110,7 @@ for fileGroup in fileGroups:
             plt.title("Histogram of Distances For " + titles[fileGroup])
             plt.savefig(fileName[:len(fileName) - 4] + ".histogram.png")
             plt.close(plt.gcf())
+            diff_histograms.append(hist.copy())
                     
         fileIndex = fileIndex + 1
 
@@ -128,4 +130,15 @@ for fileGroup in fileGroups:
     # Save the averaged diff DFT
     SaveDFT(avg, "out/"+fileGroup+".avg.diffdft.png", "Averaged DFT of Distances For " + titles[fileGroup])
 
-# TODO: averaged histogram!
+    # Make averaged histogram for file group
+    avg = diff_histograms[0]
+    for x in range(len(diff_histograms)-1):
+        avg = Lerp(avg, diff_histograms[x+1], 1.0 / float(x+2))
+
+    bins = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    hist, bin_edges = np.histogram(df_diff * len(df_diff), bins=bins)
+    plt.bar(bin_edges[:-1], hist, width=0.1)
+    plt.xlim(left=0)
+    plt.title("Averaged Histogram of Distances For " + titles[fileGroup])
+    plt.savefig("out/" + fileGroup + ".avg.histogram.png")
+    plt.close(plt.gcf())
