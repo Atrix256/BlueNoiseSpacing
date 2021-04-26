@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 DFT_WIDTH = 256
 
 
-fileGroups = ["regular"]#"blue", "regular", "stratified", "white", "goldenratio", "antithetic"]
+fileGroups = ["blue", "regular", "stratified", "white", "goldenratio", "antithetic"]
 
 titles = {
     "blue":"Blue Noise Samples",
@@ -23,6 +23,16 @@ def SaveDFT(data_dft, fileName, title):
     data_dft2 = np.log(1+data_dft)
     plt.plot(freq, data_dft2)
     plt.title(title)
+
+    smallest = min(data_dft2)
+    biggest = max(data_dft2)
+    if biggest - smallest < 0.001:
+        biggest = smallest + 0.001
+    diff = biggest - smallest;
+    smallest -= diff * 0.1
+    biggest += diff * 0.1
+    plt.ylim(smallest, biggest)
+    
     plt.savefig(fileName)
     plt.close(plt.gcf())
     
@@ -46,7 +56,7 @@ for fileGroup in fileGroups:
         print(fileName)
 
         # make a representative numberline image
-        if True:
+        if fileIndex < 1:
             # set up the figure
             fig = plt.figure()
             ax = fig.add_subplot(111)
@@ -79,23 +89,24 @@ for fileGroup in fileGroups:
         for index, row in df.iterrows():
             image1d[min(int(row[0]*DFT_WIDTH), DFT_WIDTH-1)] = 1;
         image1d_dft = MakeDFT(image1d)
-        image1d_dfts.append(image1d_dft)
-        if True:
+        image1d_dfts.append(image1d_dft.copy())
+        if fileIndex < 1:
             SaveDFT(image1d_dft, fileName[:len(fileName) - 4] + ".dft.png", "Single DFT of " + titles[fileGroup])
 
         # make a DFT of the difference between points
         df_diff = np.diff(df, axis=0)
         df_diff_dft = MakeDFT(df_diff)
-        diff_dfts.append(df_diff_dft)
-        if True:
+        diff_dfts.append(df_diff_dft.copy())
+        if fileIndex < 1:
             SaveDFT(df_diff_dft, fileName[:len(fileName) - 4] + ".diffdft.png", "Single DFT of Distances For " + titles[fileGroup])
 
         # make a histogram of the difference between points
-        if True:
+        if fileIndex < 1:
             bins = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
             hist, bin_edges = np.histogram(df_diff * len(df_diff), bins=bins)
             plt.bar(bin_edges[:-1], hist, width=0.1)
             plt.xlim(left=0)
+            plt.title("Histogram of Distances For " + titles[fileGroup])
             plt.savefig(fileName[:len(fileName) - 4] + ".histogram.png")
             plt.close(plt.gcf())
                     
@@ -115,7 +126,6 @@ for fileGroup in fileGroups:
         avg = Lerp(avg, diff_dfts[x+1], 1.0 / float(x+2))
 
     # Save the averaged diff DFT
-    SaveDFT(avg, "out/"+fileGroup+".avg.diffdft.png", "Averaged DFT of Distances For " + titles[fileGroup])    
+    SaveDFT(avg, "out/"+fileGroup+".avg.diffdft.png", "Averaged DFT of Distances For " + titles[fileGroup])
 
-# TODO: it's weird that averaged DFT of uniform and golden ratio aren't equal to the 0th one.
-# TODO: regular 72 is an odd one. it also has weird text in the figure. like mem corruption, or array re-use or something.
+# TODO: averaged histogram!
