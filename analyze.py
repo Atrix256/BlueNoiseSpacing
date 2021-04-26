@@ -3,10 +3,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-DFT_WIDTH = 1024
+DFT_WIDTH = 256
 
 
-fileGroups = ["blue", "regular", "stratified", "white", "goldenratio", "antithetic"]
+fileGroups = ["regular"]#"blue", "regular", "stratified", "white", "goldenratio", "antithetic"]
 
 titles = {
     "blue":"Blue Noise Samples",
@@ -17,23 +17,26 @@ titles = {
     "antithetic": "Antithetic Uniform Random Samples",
     }
 
-# TODO: better dft graph!
 def SaveDFT(data_dft, fileName, title):
+    freq = np.fft.fftfreq(len(data_dft))
+    freq = np.fft.fftshift(freq)
     data_dft2 = np.log(1+data_dft)
-    plt.plot(data_dft2)
+    plt.plot(freq, data_dft2)
     plt.title(title)
     plt.savefig(fileName)
     plt.close(plt.gcf())
-
+    
 def MakeDFT(data):
     data_dft = np.fft.fft(data)
-    #data_dft[0] = 0 # zero out dc
     data_dft = np.fft.fftshift(data_dft)
     data_dft = np.abs(data_dft)
     return data_dft
 
+def Lerp(a, b, t):
+    return a*(1-t)+b*t
+
 for fileGroup in fileGroups:
-    first = True
+    fileIndex = 0
 
     image1d_dfts = []
     diff_dfts = []
@@ -43,7 +46,7 @@ for fileGroup in fileGroups:
         print(fileName)
 
         # make a representative numberline image
-        if first:
+        if True:
             # set up the figure
             fig = plt.figure()
             ax = fig.add_subplot(111)
@@ -76,36 +79,43 @@ for fileGroup in fileGroups:
         for index, row in df.iterrows():
             image1d[min(int(row[0]*DFT_WIDTH), DFT_WIDTH-1)] = 1;
         image1d_dft = MakeDFT(image1d)
-        if first:
-            SaveDFT(image1d_dft, fileName[:len(fileName) - 4] + ".dft.png", "Single DFT of " + titles[fileGroup])
         image1d_dfts.append(image1d_dft)
+        if True:
+            SaveDFT(image1d_dft, fileName[:len(fileName) - 4] + ".dft.png", "Single DFT of " + titles[fileGroup])
 
         # make a DFT of the difference between points
         df_diff = np.diff(df, axis=0)
         df_diff_dft = MakeDFT(df_diff)
-        if first:
-            SaveDFT(df_diff_dft, fileName[:len(fileName) - 4] + ".diffdft.png", "Single DFT of Distances For " + titles[fileGroup])
         diff_dfts.append(df_diff_dft)
-        
-        # clear out the first variable
-        if first:
-            first = False
+        if True:
+            SaveDFT(df_diff_dft, fileName[:len(fileName) - 4] + ".diffdft.png", "Single DFT of Distances For " + titles[fileGroup])
 
-        #quit()
-            # TODO: keep converting the DFT functions
+        # make a histogram of the difference between points
+        if True:
+            bins = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+            hist, bin_edges = np.histogram(df_diff * len(df_diff), bins=bins)
+            plt.bar(bin_edges[:-1], hist, width=0.1)
+            plt.xlim(left=0)
+            plt.savefig(fileName[:len(fileName) - 4] + ".histogram.png")
+            plt.close(plt.gcf())
+                    
+        fileIndex = fileIndex + 1
+
+    # Make averaged DFT for file group
+    avg = image1d_dfts[0]
+    for x in range(len(image1d_dfts)-1):
+        avg = Lerp(avg, image1d_dfts[x+1], 1.0 / float(x+2))
+
+    # Save the averaged DFT
+    SaveDFT(avg, "out/"+fileGroup+".avg.dft.png", "Averaged DFT of " + titles[fileGroup])
 
     # Make averaged diff DFT for file group
     avg = diff_dfts[0] / len(diff_dfts)
     for x in range(len(diff_dfts)-1):
-        avg = avg + diff_dfts[x+1] / len(diff_dfts)
+        avg = Lerp(avg, diff_dfts[x+1], 1.0 / float(x+2))
 
     # Save the averaged diff DFT
-    SaveDFT(avg, "out/"+fileGroup+".avg.diffdft.png", "Averaged DFT of Distances For " + titles[fileGroup])
+    SaveDFT(avg, "out/"+fileGroup+".avg.diffdft.png", "Averaged DFT of Distances For " + titles[fileGroup])    
 
-    # Make averaged DFT for file group
-    avg = image1d_dfts[0] / len(image1d_dfts)
-    for x in range(len(image1d_dfts)-1):
-        avg = avg + image1d_dfts[x+1] / len(image1d_dfts)
-
-    # Save the averaged DFT
-    SaveDFT(avg, "out/"+fileGroup+".avg.dft.png", "Averaged DFT of " + titles[fileGroup])
+# TODO: it's weird that averaged DFT of uniform and golden ratio aren't equal to the 0th one.
+# TODO: regular 72 is an odd one. it also has weird text in the figure. like mem corruption, or array re-use or something.

@@ -3,7 +3,7 @@
 #include <direct.h>
 
 static const int c_numPoints = 32;
-static const int c_numTrials = 1024;
+static const int c_numTrials = 75;
 
 static const float c_goldenRatioConjugate = 0.61803398875f;
 
