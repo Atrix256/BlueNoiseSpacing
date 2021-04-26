@@ -1,6 +1,3 @@
-#import sys
-#from PIL import Image
-#import os
 import glob
 import pandas as pd
 import numpy as np
@@ -19,6 +16,21 @@ titles = {
     "goldenratio": "Golden Ratio LDS",
     "antithetic": "Antithetic Uniform Random Samples",
     }
+
+# TODO: better dft graph!
+def SaveDFT(data_dft, fileName, title):
+    data_dft2 = np.log(1+data_dft)
+    plt.plot(data_dft2)
+    plt.title(title)
+    plt.savefig(fileName)
+    plt.close(plt.gcf())
+
+def MakeDFT(data):
+    data_dft = np.fft.fft(data)
+    #data_dft[0] = 0 # zero out dc
+    data_dft = np.fft.fftshift(data_dft)
+    data_dft = np.abs(data_dft)
+    return data_dft
 
 for fileGroup in fileGroups:
     first = True
@@ -51,11 +63,6 @@ for fileGroup in fileGroups:
             for index, row in df.iterrows():
                 plt.plot(row[0] * (xmax-xmin)+xmin,y, 'bo', ms = 5, mfc = 'b')
 
-            # add an arrow
-            #plt.annotate('Price five days ago', (px,y), xytext = (px - 1, y + 1), 
-            #              arrowprops=dict(facecolor='black', shrink=0.1), 
-            #              horizontalalignment='right')
-
             # add numbers
             plt.text(xmin - 0.1, y, '0', horizontalalignment='right')
             plt.text(xmax + 0.1, y, '1', horizontalalignment='left')
@@ -68,32 +75,16 @@ for fileGroup in fileGroups:
         image1d = np.zeros(DFT_WIDTH)
         for index, row in df.iterrows():
             image1d[min(int(row[0]*DFT_WIDTH), DFT_WIDTH-1)] = 1;
-        image1d_dft = np.fft.fft(image1d)
-        image1d_dft = np.fft.fftshift(image1d_dft)
-        image1d_dft = np.abs(image1d_dft)
-        image1d_dft2 = np.log(1+image1d_dft)
+        image1d_dft = MakeDFT(image1d)
         if first:
-            plt.plot(image1d_dft2)
-            plt.title("Single DFT of " + titles[fileGroup])
-            plt.savefig(fileName[:len(fileName) - 4] + ".dft.png")
-            plt.close(plt.gcf())
-
+            SaveDFT(image1d_dft, fileName[:len(fileName) - 4] + ".dft.png", "Single DFT of " + titles[fileGroup])
         image1d_dfts.append(image1d_dft)
-
-        # TODO: better dft graph!
 
         # make a DFT of the difference between points
         df_diff = np.diff(df, axis=0)
-        df_diff_dft = np.fft.fft(df_diff)
-        df_diff_dft = np.fft.fftshift(df_diff_dft)
-        df_diff_dft = np.abs(df_diff_dft)
-        df_diff_dft2 = np.log(1+df_diff_dft)
+        df_diff_dft = MakeDFT(df_diff)
         if first:
-            plt.plot(df_diff_dft2)
-            plt.title("Single DFT of Distances For " + titles[fileGroup])
-            plt.savefig(fileName[:len(fileName) - 4] + ".diffdft.png")
-            plt.close(plt.gcf())
-
+            SaveDFT(df_diff_dft, fileName[:len(fileName) - 4] + ".diffdft.png", "Single DFT of Distances For " + titles[fileGroup])
         diff_dfts.append(df_diff_dft)
         
         # clear out the first variable
@@ -101,28 +92,20 @@ for fileGroup in fileGroups:
             first = False
 
         #quit()
+            # TODO: keep converting the DFT functions
 
-    # Make averaged DFT for file group
+    # Make averaged diff DFT for file group
     avg = diff_dfts[0] / len(diff_dfts)
     for x in range(len(diff_dfts)-1):
         avg = avg + diff_dfts[x+1] / len(diff_dfts)
 
-    # graph the averaged DFT
-    # TODO: better DFT graph!
-    plt.plot(np.log(1+avg))
-    plt.title("Averaged DFT of Distances For " + titles[fileGroup])
-    plt.savefig("out/"+fileGroup+".avg.diffdft.png")
-    plt.close(plt.gcf())
-
+    # Save the averaged diff DFT
+    SaveDFT(avg, "out/"+fileGroup+".avg.diffdft.png", "Averaged DFT of Distances For " + titles[fileGroup])
 
     # Make averaged DFT for file group
     avg = image1d_dfts[0] / len(image1d_dfts)
     for x in range(len(image1d_dfts)-1):
         avg = avg + image1d_dfts[x+1] / len(image1d_dfts)
 
-    # graph the averaged DFT
-    # TODO: better DFT graph!
-    plt.plot(np.log(1+avg))
-    plt.title("Averaged DFT of " + titles[fileGroup])
-    plt.savefig("out/"+fileGroup+".avg.dft.png")
-    plt.close(plt.gcf())
+    # Save the averaged DFT
+    SaveDFT(avg, "out/"+fileGroup+".avg.dft.png", "Averaged DFT of " + titles[fileGroup])
