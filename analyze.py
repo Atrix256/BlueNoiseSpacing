@@ -6,6 +6,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+DFT_WIDTH = 1024
+
 
 fileGroups = ["blue", "regular", "stratified", "white", "goldenratio", "antithetic"]
 
@@ -21,6 +23,7 @@ titles = {
 for fileGroup in fileGroups:
     first = True
 
+    image1d_dfts = []
     diff_dfts = []
     
     for fileName in glob.glob("out/" + fileGroup + "_*.csv"):
@@ -61,17 +64,32 @@ for fileGroup in fileGroups:
             plt.savefig(fileName[:len(fileName) - 4] + ".numberline.png")
             plt.close(plt.gcf())
 
-        # TODO: dft of points. make a discretized 1d array that has a 1 where there is a point and 0 elsewhere, dft it. make 1d graph.
+        # make a DFT of the points
+        image1d = np.zeros(DFT_WIDTH)
+        for index, row in df.iterrows():
+            image1d[min(int(row[0]*DFT_WIDTH), DFT_WIDTH-1)] = 1;
+        image1d_dft = np.fft.fft(image1d)
+        image1d_dft = np.fft.fftshift(image1d_dft)
+        image1d_dft = np.abs(image1d_dft)
+        image1d_dft2 = np.log(1+image1d_dft)
+        if first:
+            plt.plot(image1d_dft2)
+            plt.title("Single DFT of " + titles[fileGroup])
+            plt.savefig(fileName[:len(fileName) - 4] + ".dft.png")
+            plt.close(plt.gcf())
 
-        # get the difference and make a dft of it
+        image1d_dfts.append(image1d_dft)
+
+        # TODO: better dft graph!
+
+        # make a DFT of the difference between points
         df_diff = np.diff(df, axis=0)
         df_diff_dft = np.fft.fft(df_diff)
         df_diff_dft = np.fft.fftshift(df_diff_dft)
-        df_diff_dft = np.log(1+np.abs(df_diff_dft))
-
-        #TODO: i saw some other nice looking DFT graphs
+        df_diff_dft = np.abs(df_diff_dft)
+        df_diff_dft2 = np.log(1+df_diff_dft)
         if first:
-            plt.plot(df_diff_dft)
+            plt.plot(df_diff_dft2)
             plt.title("Single DFT of Distances For " + titles[fileGroup])
             plt.savefig(fileName[:len(fileName) - 4] + ".diffdft.png")
             plt.close(plt.gcf())
@@ -84,16 +102,27 @@ for fileGroup in fileGroups:
 
         #quit()
 
-    # TODO: make averaged DFT for fileGroup
+    # Make averaged DFT for file group
     avg = diff_dfts[0] / len(diff_dfts)
     for x in range(len(diff_dfts)-1):
         avg = avg + diff_dfts[x+1] / len(diff_dfts)
 
     # graph the averaged DFT
     # TODO: better DFT graph!
-    plt.plot(avg)
+    plt.plot(np.log(1+avg))
     plt.title("Averaged DFT of Distances For " + titles[fileGroup])
     plt.savefig("out/"+fileGroup+".avg.diffdft.png")
     plt.close(plt.gcf())
 
 
+    # Make averaged DFT for file group
+    avg = image1d_dfts[0] / len(image1d_dfts)
+    for x in range(len(image1d_dfts)-1):
+        avg = avg + image1d_dfts[x+1] / len(image1d_dfts)
+
+    # graph the averaged DFT
+    # TODO: better DFT graph!
+    plt.plot(np.log(1+avg))
+    plt.title("Averaged DFT of " + titles[fileGroup])
+    plt.savefig("out/"+fileGroup+".avg.dft.png")
+    plt.close(plt.gcf())
